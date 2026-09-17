@@ -1,0 +1,14 @@
+{
+  "name": "campaign-ussd-donation",
+  "version": "1.0.0",
+  "description": "USSD endpoint for a campaign donation page, accepting mobile money payments (MTN, Vodafone, AirtelTigo) via Africa's Talking.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5"
+  }
+}
