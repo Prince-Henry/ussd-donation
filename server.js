@@ -99,7 +99,13 @@ app.post('/ussd', async (req, res) => {
       }
     }
   } catch (err) {
-    console.error('USSD handler error:', err.message);
+    // If this was an HTTP error from the payment provider, log the real
+    // reason it gave (e.g. Paystack's error message), not just "status 400".
+    if (err.response && err.response.data) {
+      console.error('USSD handler error:', err.message, '| Provider response:', JSON.stringify(err.response.data));
+    } else {
+      console.error('USSD handler error:', err.message);
+    }
     sessions.delete(sessionID);
     return reply('Sorry, something went wrong processing your donation. Please try again later.', false);
   }
@@ -112,6 +118,20 @@ app.post('/ussd', async (req, res) => {
 // swap this out for a gateway you already use (Paystack, Hubtel, Flutterwave).
 // This function is written for Paystack's Ghana mobile money charge as a
 // working placeholder — replace with your actual provider's call.
+// Paystack expects the LOCAL Ghana format, e.g. 0551234987.
+// Arkesel sends msisdn in international format, e.g. 233551234987 (no +).
+// Passing the international format straight to Paystack causes a 400 error.
+function toLocalGhanaFormat(phoneNumber) {
+  const digits = (phoneNumber || '').replace(/\D/g, ''); // strip any non-digits, e.g. a leading +
+  if (digits.startsWith('233') && digits.length === 12) {
+    return '0' + digits.slice(3);
+  }
+  if (digits.startsWith('0') && digits.length === 10) {
+    return digits; // already local format
+  }
+  return digits; // fallback: pass through as-is so the error (if any) is visible in logs
+}
+
 async function requestMobileMoneyPayment({ phoneNumber, amount, network }) {
   const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
   if (!PAYSTACK_SECRET_KEY) {
@@ -119,15 +139,16 @@ async function requestMobileMoneyPayment({ phoneNumber, amount, network }) {
   }
 
   const providerMap = { MTN: 'mtn', VODAFONE: 'vod', AIRTELTIGO: 'atl' };
+  const localPhone = toLocalGhanaFormat(phoneNumber);
 
   const { data } = await axios.post(
     'https://api.paystack.co/charge',
     {
-      email: `${phoneNumber}@donor.placeholder`, // Paystack requires an email; use a placeholder or collect one
+      email: `${localPhone}@donor.placeholder`, // Paystack requires an email; use a placeholder or collect one
       amount: Number(amount) * 100, // Paystack expects amount in pesewas
       currency: 'GHS',
       mobile_money: {
-        phone: phoneNumber,
+        phone: localPhone,
         provider: providerMap[network] || 'mtn'
       }
     },
