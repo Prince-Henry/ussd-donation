@@ -144,7 +144,10 @@ async function requestMobileMoneyPayment({ phoneNumber, amount, network }) {
   const { data } = await axios.post(
     'https://api.paystack.co/charge',
     {
-      email: `${localPhone}@donor.placeholder`, // Paystack requires an email; use a placeholder or collect one
+      // Paystack requires a syntactically valid email even though we don't have
+      // a real one for USSD donors. Use a real domain (not a fake TLD like
+      // .placeholder, which Paystack's validator rejects) - ideally one you own.
+      email: `donor.${localPhone}@example.com`,
       amount: Number(amount) * 100, // Paystack expects amount in pesewas
       currency: 'GHS',
       mobile_money: {
