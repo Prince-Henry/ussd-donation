@@ -188,7 +188,11 @@ async function requestMobileMoneyPayment({ phoneNumber, amount, network }) {
     }
   );
 
-  return data; // { status, reference, ... } - status checked by caller above
+  // Paystack wraps the actual charge details in a nested "data" object.
+  // The top-level `data.status` is just true/false for "did the API call
+  // succeed", not the charge's real status (e.g. "pay_offline", "send_otp") -
+  // that's `data.data.status`, which is what the caller needs to check.
+  return data.data;
 }
 
 app.get('/', (req, res) => {
